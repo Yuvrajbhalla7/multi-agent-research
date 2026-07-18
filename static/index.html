@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Relay — Multi-Agent Research Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0A0F1C;
+    --panel: #101828;
+    --panel-raised: #16213A;
+    --border: #223049;
+    --cyan: #2DD4E8;
+    --amber: #F5B84C;
+    --text: #E7ECF5;
+    --muted: #7C8AA8;
+    --dim: #4A5875;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(45, 212, 232, 0.08), transparent);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    padding: 48px 24px 80px;
+  }
+
+  .wrap { max-width: 780px; margin: 0 auto; }
+
+  header { margin-bottom: 40px; }
+
+  .eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--cyan);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .eyebrow::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+  }
+
+  h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 34px;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+  }
+
+  .sub {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.5;
+    max-width: 520px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 32px;
+  }
+
+  input[type="text"] {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  input[type="text"]:focus { border-color: var(--cyan); }
+  input[type="text"]::placeholder { color: var(--dim); }
+
+  button {
+    background: var(--cyan);
+    color: #04141A;
+    border: none;
+    border-radius: 8px;
+    padding: 0 24px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 15px;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.1s;
+  }
+
+  button:hover { filter: brightness(1.1); }
+  button:active { transform: scale(0.97); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  /* --- Relay bar: the signature element --- */
+  .relay {
+    display: none;
+    margin-top: 44px;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+  }
+
+  .relay.visible { display: flex; }
+
+  .relay-line {
+    position: absolute;
+    top: 21px;
+    left: 21px;
+    right: 21px;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+
+  .relay-line-fill {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    transition: width 0.6s ease;
+  }
+
+  .node {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .node-dot {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--dim);
+    transition: all 0.4s ease;
+  }
+
+  .node.active .node-dot {
+    border-color: var(--amber);
+    color: var(--amber);
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  .node.done .node-dot {
+    border-color: var(--cyan);
+    background: var(--cyan);
+    color: #04141A;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(245, 184, 76, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(245, 184, 76, 0); }
+  }
+
+  .node-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .node.active .node-label { color: var(--amber); }
+  .node.done .node-label { color: var(--cyan); }
+
+  /* --- Log panel --- */
+  .log {
+    display: none;
+    margin-top: 40px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .log.visible { display: block; }
+
+  .log-header {
+    background: var(--panel-raised);
+    padding: 10px 16px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .log-body {
+    padding: 4px 0;
+    max-height: 340px;
+    overflow-y: auto;
+  }
+
+  .log-entry {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+    animation: fadeIn 0.4s ease;
+  }
+
+  .log-entry:last-child { border-bottom: none; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .log-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cyan);
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .log-text {
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--muted);
+    white-space: pre-wrap;
+    max-height: 120px;
+    overflow-y: auto;
+  }
+
+  /* --- Report --- */
+  .report {
+    display: none;
+    margin-top: 32px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 32px;
+  }
+
+  .report.visible { display: block; }
+
+  .report-tag {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--cyan);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .report-tag::before { content: '✓'; }
+
+  .report-body {
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--text);
+  }
+
+  .report-body h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 19px;
+    margin: 20px 0 8px;
+    color: var(--text);
+  }
+
+  .report-body h2:first-child { margin-top: 0; }
+  .report-body p { margin-bottom: 12px; color: var(--muted); }
+  .report-body strong { color: var(--text); }
+
+  .error {
+    display: none;
+    margin-top: 24px;
+    background: rgba(245, 100, 76, 0.08);
+    border: 1px solid rgba(245, 100, 76, 0.3);
+    border-radius: 8px;
+    padding: 16px;
+    color: #F5644C;
+    font-size: 14px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  .error.visible { display: block; }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="eyebrow">Relay · Live Agent Pipeline</div>
+      <h1>Multi-Agent Research Assistant</h1>
+      <p class="sub">Give it a topic. Three agents hand it off in sequence — a Researcher gathers facts, a Writer drafts the report, a Critic reviews and sends it back for revision if needed.</p>
+    </header>
+
+    <div class="input-row">
+      <input type="text" id="topicInput" placeholder="e.g. impact of remote work on productivity" />
+      <button id="submitBtn">Run</button>
+    </div>
+
+    <div class="relay" id="relay">
+      <div class="relay-line"><div class="relay-line-fill" id="relayFill"></div></div>
+      <div class="node" id="node-researcher">
+        <div class="node-dot">R</div>
+        <div class="node-label">Researcher</div>
+      </div>
+      <div class="node" id="node-writer">
+        <div class="node-dot">W</div>
+        <div class="node-label">Writer</div>
+      </div>
+      <div class="node" id="node-critic">
+        <div class="node-dot">C</div>
+        <div class="node-label">Critic</div>
+      </div>
+    </div>
+
+    <div class="log" id="log">
+      <div class="log-header">AGENT TRACE</div>
+      <div class="log-body" id="logBody"></div>
+    </div>
+
+    <div class="error" id="errorBox"></div>
+
+    <div class="report" id="report">
+      <div class="report-tag">Final report</div>
+      <div class="report-body" id="reportBody"></div>
+    </div>
+  </div>
+
+<script>
+const API_URL = "http://127.0.0.1:8000/research";
+
+const topicInput = document.getElementById('topicInput');
+const submitBtn = document.getElementById('submitBtn');
+const relay = document.getElementById('relay');
+const relayFill = document.getElementById('relayFill');
+const log = document.getElementById('log');
+const logBody = document.getElementById('logBody');
+const report = document.getElementById('report');
+const reportBody = document.getElementById('reportBody');
+const errorBox = document.getElementById('errorBox');
+
+const nodes = {
+  researcher: document.getElementById('node-researcher'),
+  writer: document.getElementById('node-writer'),
+  critic: document.getElementById('node-critic'),
+};
+
+function resetUI() {
+  errorBox.classList.remove('visible');
+  errorBox.textContent = '';
+  report.classList.remove('visible');
+  reportBody.innerHTML = '';
+  logBody.innerHTML = '';
+  relayFill.style.width = '0%';
+  Object.values(nodes).forEach(n => n.classList.remove('active', 'done'));
+  log.classList.add('visible');
+  relay.classList.add('visible');
+}
+
+function setNodeState(agent, state) {
+  const node = nodes[agent];
+  if (!node) return;
+  node.classList.remove('active', 'done');
+  node.classList.add(state);
+}
+
+function appendLogEntry(agent, roundLabel, text) {
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  const tag = document.createElement('span');
+  tag.className = 'log-tag';
+  tag.textContent = agent.toUpperCase() + (roundLabel ? ` · ROUND ${roundLabel}` : '');
+  const body = document.createElement('div');
+  body.className = 'log-text';
+  body.textContent = text;
+  entry.appendChild(tag);
+  entry.appendChild(body);
+  logBody.appendChild(entry);
+  logBody.scrollTop = logBody.scrollHeight;
+}
+
+function renderReport(markdownish) {
+  const lines = markdownish.split('\n');
+  let html = '';
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (trimmed.startsWith('## ')) {
+      html += `<h2>${trimmed.slice(3)}</h2>`;
+    } else if (trimmed.startsWith('# ')) {
+      html += `<h2>${trimmed.slice(2)}</h2>`;
+    } else {
+      html += `<p>${trimmed}</p>`;
+    }
+  }
+  reportBody.innerHTML = html;
+}
+
+async function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function playTrace(trace) {
+  const total = trace.length;
+  for (let i = 0; i < total; i++) {
+    const step = trace[i];
+    setNodeState(step.agent, 'active');
+    await sleep(500);
+    appendLogEntry(step.agent, step.round, step.output);
+    setNodeState(step.agent, 'done');
+    relayFill.style.width = `${Math.round(((i + 1) / total) * 100)}%`;
+    await sleep(350);
+  }
+}
+
+async function runResearch() {
+  const topic = topicInput.value.trim();
+  if (!topic) {
+    topicInput.focus();
+    return;
+  }
+
+  resetUI();
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Running…';
+
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Server responded with ${res.status}`);
+    }
+
+    const data = await res.json();
+    await playTrace(data.trace);
+    renderReport(data.final_report);
+    report.classList.add('visible');
+  } catch (err) {
+    errorBox.textContent = `Request failed: ${err.message}. Make sure the FastAPI server is running at 127.0.0.1:8000 and CORS is enabled.`;
+    errorBox.classList.add('visible');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Run';
+  }
+}
+
+submitBtn.addEventListener('click', runResearch);
+topicInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') runResearch();
+});
+</script>
+</body>
+</html>
