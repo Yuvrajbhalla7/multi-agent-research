@@ -1,10 +1,4 @@
-"""
-Orchestrator.
-This is the actual "multi-agent" piece: it runs the three agents in
-sequence, loops the Writer/Critic pair until the report is approved
-(or a max round limit is hit), and returns both the final report and
-the step-by-step trace — useful for demoing how the agents collaborated.
-"""
+
 
 from agents.researcher import research
 from agents.writer import write, revise

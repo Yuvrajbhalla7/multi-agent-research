@@ -1,8 +1,4 @@
-"""
-Critic agent.
-Job: review the Writer's draft against the original research notes.
-Either approves it, or returns specific, actionable feedback.
-"""
+
 
 from agents.llm import call_llm
 

@@ -1,8 +1,4 @@
-"""
-Writer agent.
-Job: turn the Researcher's fact list into a structured report.
-Also handles revisions when the Critic sends back feedback.
-"""
+
 
 from agents.llm import call_llm
 

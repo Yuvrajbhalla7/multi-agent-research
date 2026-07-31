@@ -1,9 +1,4 @@
-"""
-Researcher agent.
-Job: take a topic, search the web, and condense raw results into
-a clean list of key facts with sources. This is the only agent
-that touches the search tool.
-"""
+
 
 from agents.llm import call_llm
 from tools.search import search

@@ -3,8 +3,7 @@
 import os
 from groq import Groq
 
-# Reads GROQ_API_KEY from your environment. Set it before running, e.g.
-#   setx GROQ_API_KEY "your-key-here"   (Windows, then restart terminal)
+
 from dotenv import load_dotenv
 load_dotenv()
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
